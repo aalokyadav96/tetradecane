@@ -13,7 +13,6 @@ import (
 func main() {
 	router := httprouter.New()
 	router.GET("/", Index)
-	router.GET("/activity", Index)
 	router.GET("/about", Index)
 	router.GET("/profile", Index)
 	router.GET("/register", Index)
@@ -30,7 +29,6 @@ func main() {
 
 	router.POST("/api/register", rateLimit(register))
 	router.POST("/api/login", rateLimit(login))
-	router.POST("/api/activity", authenticate(logActivity))
 	router.GET("/api/profile", authenticate(getProfile))
 	router.PUT("/api/profile", authenticate(editProfile))
 	router.DELETE("/api/profile", authenticate(deleteProfile))
@@ -39,6 +37,7 @@ func main() {
 	router.GET("/api/followers", authenticate(getFollowers))
 	router.GET("/api/following", authenticate(getFollowing))
 	router.GET("/api/follow/suggestions", authenticate(suggestFollowers))
+	router.POST("/api/activity", authenticate(logActivity))
 	router.GET("/api/activity", authenticate(getActivityFeed))
 	router.GET("/api/user/:username", getUserProfile)
 
@@ -56,6 +55,7 @@ func main() {
 	router.DELETE("/api/event/:eventid/media/:id", authenticate(deleteMedia))
 
 	router.POST("/api/event/:eventid/merch", authenticate(createMerch))
+	router.POST("/api/event/:eventid/merch/:merchid/buy", authenticate(buyMerch))
 	router.GET("/api/event/:eventid/merch", getMerchs)
 	router.GET("/api/event/:eventid/merch/:merchid", getMerch)
 	router.PUT("/api/event/:eventid/merch/:merchid", authenticate(editMerch))
@@ -63,9 +63,9 @@ func main() {
 
 	router.POST("/api/event/:eventid/ticket", authenticate(createTick))
 	router.GET("/api/event/:eventid/ticket", getTicks)
-	router.POST("/api/event/:eventid/ticket/:ticketid", buyTicket)
-	router.PUT("/api/event/:eventid/ticket/:tickid", authenticate(editTick))
-	router.DELETE("/api/event/:eventid/ticket/:tickid", authenticate(deleteTick))
+	router.POST("/api/event/:eventid/tickets/:ticketid/buy", authenticate(buyTicket))
+	router.PUT("/api/event/:eventid/ticket/:ticketid", authenticate(editTick))
+	router.DELETE("/api/event/:eventid/ticket/:ticketid", authenticate(deleteTick))
 
 	router.GET("/api/places", getPlaces)
 	router.POST("/api/place", authenticate(createPlace))

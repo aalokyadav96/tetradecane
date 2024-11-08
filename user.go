@@ -141,8 +141,23 @@ func editProfile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.Error(w, "Failed to update profile", http.StatusInternalServerError)
 		return
 	}
+	var userProfile User
 
-	w.WriteHeader(http.StatusNoContent) // Send 204 No Content
+	// Retrieve the user by username
+	err = userCollection.FindOne(context.TODO(), bson.M{"username": claims.Username}).Decode(&userProfile)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "User not found", http.StatusNotFound)
+			log.Printf("User not found: %s", claims.Username)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Printf("Error retrieving user: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK) // Send 204 No Content
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(userProfile)
 }
 
 // Handle profile retrieval

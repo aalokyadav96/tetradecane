@@ -1,4 +1,7 @@
 /* General reset */
+@import url("./base.css");
+@import url("./cardb.css");
+
 * {
     margin: 0;
     padding: 0;
@@ -96,6 +99,10 @@ nav ul li button:hover {
     justify-content: space-between;
 }
 
+.bannercon {
+    flex: 3;
+}
+
 .bannercon img {
     width: 100%;
     height: auto;
@@ -103,7 +110,7 @@ nav ul li button:hover {
 }
 
 .event-header {
-    flex: 1;
+    flex: 2;
     margin-left: 20px;
 }
 

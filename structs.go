@@ -176,6 +176,7 @@ type Media struct {
 	URL         string `json:"url" bson:"url"`         // URL of the media
 	Caption     string `json:"caption" bson:"caption"` // Optional caption for the media
 	Description string `json:"description,omitempty"`
+	CreatorID   string `json:"creatorid" bson:"creatorid"`
 }
 
 type Category struct {

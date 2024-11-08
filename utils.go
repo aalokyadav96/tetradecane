@@ -42,47 +42,6 @@ func removeString(slice []string, s string) []string {
 	return slice
 }
 
-// func uploadFile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-// 	if r.Method == http.MethodPost {
-// 		err := r.ParseMultipartForm(10 << 20) // 10 MB limit
-// 		if err != nil {
-// 			http.Error(w, "Unable to parse form", http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		file, fileHeader, err := r.FormFile("file")
-// 		if err != nil {
-// 			http.Error(w, "Unable to get file", http.StatusBadRequest)
-// 			return
-// 		}
-// 		defer file.Close()
-
-// 		// Ensure uploads directory exists
-// 		if err := os.MkdirAll("./uploads", os.ModePerm); err != nil {
-// 			http.Error(w, "Unable to create upload directory", http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		out, err := os.Create(filepath.Join("./uploads", fileHeader.Filename))
-// 		if err != nil {
-// 			http.Error(w, "Unable to create file", http.StatusInternalServerError)
-// 			return
-// 		}
-// 		defer out.Close()
-
-// 		if _, err = io.Copy(out, file); err != nil {
-// 			http.Error(w, "Unable to save file", http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		fmt.Fprintf(w, "File uploaded successfully!")
-// 	} else {
-// 		w.WriteHeader(http.StatusMethodNotAllowed)
-// 	}
-// }
-
-//==================
-
 // func sendImageAsBytes(w http.ResponseWriter, _ *http.Request, a httprouter.Params) {
 // 	buf, err := os.ReadFile("./images/" + a.ByName("imageName"))
 // 	if err != nil {
@@ -116,21 +75,6 @@ func EncrypIt(strToHash string) string {
 	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
-// Helper function to send responses
-// func sendResponse(w http.ResponseWriter, status int, data interface{}, message string, err error) {
-// 	response := Response{
-// 		Message: message,
-// 		Data:    data,
-// 	}
-
-// 	if err != nil {
-// 		response.Error = err.Error()
-// 	}
-
-// 	w.WriteHeader(status)
-// 	json.NewEncoder(w).Encode(response)
-// }
-
 func sendResponse(w http.ResponseWriter, status int, data interface{}, message string, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -150,16 +94,3 @@ func sendResponse(w http.ResponseWriter, status int, data interface{}, message s
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
-
-// func sendResponse(w http.ResponseWriter, status int, data interface{}, message string, err error) {
-// 	w.WriteHeader(status)
-// 	response := map[string]interface{}{
-// 		"status":  status,
-// 		"message": message,
-// 		"data":    data,
-// 	}
-// 	if err != nil {
-// 		response["error"] = err.Error()
-// 	}
-// 	json.NewEncoder(w).Encode(response)
-// }

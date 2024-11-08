@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"go.mongodb.org/mongo-driver/bson"
@@ -111,31 +111,6 @@ func getEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	json.NewEncoder(w).Encode(events)
 }
 
-// func getEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-// 	id := ps.ByName("eventid")
-
-// 	collection := client.Database("eventdb").Collection("events")
-// 	var event Event
-// 	err := collection.FindOne(context.TODO(), bson.M{"eventid": id}).Decode(&event)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusNotFound)
-// 		return
-// 	}
-// 	if event.Tickets == nil {
-// 		event.Tickets = []Ticket{} // Initialize as an empty array if it's nil
-// 	}
-
-// 	if event.Media == nil {
-// 		event.Media = []Media{} // Initialize as an empty array if it's nil
-// 	}
-
-// 	if event.Merch == nil {
-// 		event.Merch = []Merch{} // Initialize as an empty array if it's nil
-// 	}
-
-// 	json.NewEncoder(w).Encode(event)
-// }
-
 func getEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	id := ps.ByName("eventid")
 
@@ -214,17 +189,32 @@ func editEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	// Retrieve the event data from the form
-	var event Event
-	event.Title = r.FormValue("title")
-	event.Date = r.FormValue("date")
-	event.Place = r.FormValue("place")
-	event.Location = r.FormValue("location")
-	event.Description = r.FormValue("description")
-	event.EventID = eventID // Ensure we set the ID
+	// Prepare a map for updating fields
+	updateFields := bson.M{}
+
+	// Only set the fields that are provided in the form
+	if title := r.FormValue("title"); title != "" {
+		updateFields["title"] = title
+	}
+
+	if date := r.FormValue("date"); date != "" {
+		updateFields["date"] = date
+	}
+
+	if place := r.FormValue("place"); place != "" {
+		updateFields["place"] = place
+	}
+
+	if location := r.FormValue("location"); location != "" {
+		updateFields["location"] = location
+	}
+
+	if description := r.FormValue("description"); description != "" {
+		updateFields["description"] = description
+	}
 
 	// Validate required fields
-	if event.Title == "" || event.Location == "" || event.Description == "" {
+	if updateFields["title"] == "" || updateFields["location"] == "" || updateFields["description"] == "" {
 		http.Error(w, "Title, Location, and Description are required", http.StatusBadRequest)
 		return
 	}
@@ -243,11 +233,8 @@ func editEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}
 	}()
 
-	// If no banner file is uploaded, retain the existing banner image (if any)
-	if bannerFile == nil {
-		// If no new banner is uploaded, retain the existing banner image (no change)
-		log.Print("No new banner uploaded, using existing image")
-	} else {
+	// If a new banner is uploaded, save it and update the field
+	if bannerFile != nil {
 		// Ensure the directory exists
 		if err := os.MkdirAll("./eventpic", os.ModePerm); err != nil {
 			http.Error(w, "Error creating directory for banner", http.StatusInternalServerError)
@@ -255,7 +242,7 @@ func editEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}
 
 		// Save the banner image
-		out, err := os.Create("./eventpic/" + event.EventID + ".jpg")
+		out, err := os.Create("./eventpic/" + eventID + ".jpg")
 		if err != nil {
 			http.Error(w, "Error saving banner", http.StatusInternalServerError)
 			return
@@ -268,21 +255,48 @@ func editEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			return
 		}
 
-		// Update the banner image path
-		event.BannerImage = event.EventID + ".jpg"
+		// Update the banner image path in the updateFields map
+		updateFields["banner_image"] = eventID + ".jpg"
 	}
 
-	// Update the event in MongoDB
+	// Update the event in MongoDB (only the fields that have changed)
 	collection := client.Database("eventdb").Collection("events")
-	_, err = collection.UpdateOne(context.TODO(), bson.M{"eventid": eventID}, bson.M{"$set": event})
+	updateFields["updated_at"] = time.Now() // Update the timestamp for the update
+
+	// Perform the update query
+	_, err = collection.UpdateOne(
+		context.TODO(),
+		bson.M{"eventid": eventID},
+		bson.M{"$set": updateFields},
+	)
 	if err != nil {
 		http.Error(w, "Error updating event", http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with the updated event
+	// Respond with the updated fields
 	w.WriteHeader(http.StatusOK) // 200 OK
-	if err := json.NewEncoder(w).Encode(event); err != nil {
+	updatedEvent := Event{EventID: eventID}
+	for key, value := range updateFields {
+		// Assign updated values back to the Event struct
+		switch key {
+		case "title":
+			updatedEvent.Title = value.(string)
+		case "description":
+			updatedEvent.Description = value.(string)
+		case "place":
+			updatedEvent.Place = value.(string)
+		case "date":
+			updatedEvent.Date = value.(string)
+		case "location":
+			updatedEvent.Location = value.(string)
+			// case "banner_image":
+			// 	updatedEvent.BannerImage = value.(string)
+		}
+	}
+
+	// Send the updated event as the response
+	if err := json.NewEncoder(w).Encode(updatedEvent); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
@@ -351,18 +365,3 @@ func addReview(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-
-// func addMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-// 	eventID := ps.ByName("eventid")
-// 	var media Media
-// 	json.NewDecoder(r.Body).Decode(&media)
-
-// 	// Add media to MongoDB
-// 	collection := client.Database("eventdb").Collection("events")
-// 	_, err := collection.UpdateOne(context.TODO(), bson.M{"eventid": eventID}, bson.M{"$push": bson.M{"media": media}})
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	w.WriteHeader(http.StatusNoContent)
-// }

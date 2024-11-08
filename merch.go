@@ -166,3 +166,40 @@ func deleteMerch(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// w.WriteHeader(http.StatusNoContent)
 	sendResponse(w, http.StatusNoContent, map[string]string{"": ""}, "Delete successful", nil)
 }
+
+// Buy Merch
+func buyMerch(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	eventID := ps.ByName("eventid")
+	merchID := ps.ByName("merchid")
+
+	// Find the merch in the database
+	collection := client.Database("eventdb").Collection("merch")
+	var merch Merch // Define the Merch struct based on your schema
+	err := collection.FindOne(context.TODO(), bson.M{"eventid": eventID, "merchid": merchID}).Decode(&merch)
+	if err != nil {
+		http.Error(w, "Merch not found or other error", http.StatusNotFound)
+		return
+	}
+
+	// Check if there are merchs available
+	if merch.Stock <= 0 {
+		http.Error(w, "No merchs available for purchase", http.StatusBadRequest)
+		return
+	}
+
+	// Decrease the merch quantity
+	update := bson.M{"$inc": bson.M{"stock": -1}}
+	_, err = collection.UpdateOne(context.TODO(), bson.M{"eventid": eventID, "merchid": merchID}, update)
+	if err != nil {
+		http.Error(w, "Failed to update merch quantity", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Merch purchased successfully",
+	})
+}

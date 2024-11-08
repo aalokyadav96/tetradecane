@@ -20,38 +20,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// Updated Login Function
-// func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-// 	var user User
-// 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-// 		http.Error(w, "Invalid input", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	var storedUser User
-// 	err := userCollection.FindOne(context.TODO(), bson.M{"username": user.Username}).Decode(&storedUser)
-// 	if err != nil || bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(user.Password)) != nil {
-// 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-// 		return
-// 	}
-
-// 	claims := &Claims{
-// 		Username: storedUser.Username,
-// 		UserID:   storedUser.UserID, // Make sure to set UserID here
-// 		RegisteredClaims: jwt.RegisteredClaims{
-// 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
-// 		},
-// 	}
-// 	log.Print(storedUser.UserID)
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-// 	tokenString, err := token.SignedString(jwtSecret)
-// 	if err != nil {
-// 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	sendResponse(w, http.StatusOK, map[string]string{"token": tokenString,"userid": storedUser.UserID}, "Login successful", nil)
-// }
-
 func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {

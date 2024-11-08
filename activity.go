@@ -12,11 +12,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Handle logging activity
 func logActivity(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	tokenString := r.Header.Get("Authorization")
 	if len(tokenString) < 8 {
 		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		log.Println("Authorization token is missing or invalid.")
 		return
 	}
 
@@ -26,27 +26,32 @@ func logActivity(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	})
 	if err != nil {
 		sendErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+		log.Println("Invalid token:", err)
 		return
 	}
 
 	var activity Activity
 	if err := json.NewDecoder(r.Body).Decode(&activity); err != nil {
 		sendErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		log.Println("Failed to decode activity:", err)
 		return
 	}
 
 	activity.Username = claims.Username
 	activity.Timestamp = time.Now()
+
 	activitiesCollection := client.Database("your_database").Collection("activities")
 	_, err = activitiesCollection.InsertOne(context.TODO(), activity)
 	if err != nil {
 		sendErrorResponse(w, http.StatusInternalServerError, "Failed to log activity")
+		log.Println("Failed to insert activity into database:", err)
 		return
 	}
 
 	log.Println("Activity logged:", activity)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusCreated)                              // Respond with 201 Created
+	w.Write([]byte(`{"message": "Activity logged successfully"}`)) // Include a response body
 }
 
 // Fetch activity feed
@@ -90,63 +95,3 @@ func sendErrorResponse(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
-
-// // Handle logging activity
-// func logActivity(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-// 	tokenString := r.Header.Get("Authorization")
-// 	claims := &Claims{}
-
-// 	_, err := jwt.ParseWithClaims(tokenString[7:], claims, func(token *jwt.Token) (interface{}, error) {
-// 		return jwtSecret, nil
-// 	})
-// 	if err != nil {
-// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-// 		return
-// 	}
-
-// 	var activity Activity
-// 	if err := json.NewDecoder(r.Body).Decode(&activity); err != nil {
-// 		http.Error(w, "Invalid input", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	activity.Username = claims.Username
-// 	activity.Timestamp = time.Now() // Set the current timestamp
-// 	activitiesCollection := client.Database("eventdb").Collection("activities")
-// 	_, err = activitiesCollection.InsertOne(context.TODO(), activity)
-// 	if err != nil {
-// 		http.Error(w, "Failed to log activity", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	log.Println(activity)
-// 	w.WriteHeader(http.StatusCreated) // 201 Created
-// }
-
-// // Fetch activity feed
-// func getActivityFeed(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-// 	tokenString := r.Header.Get("Authorization")
-// 	claims := &Claims{}
-// 	_, err := jwt.ParseWithClaims(tokenString[7:], claims, func(token *jwt.Token) (interface{}, error) {
-// 		return jwtSecret, nil
-// 	})
-// 	if err != nil {
-// 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-// 		return
-// 	}
-
-// 	activitiesCollection := client.Database("eventdb").Collection("activities")
-// 	cursor, err := activitiesCollection.Find(context.TODO(), bson.M{"username": claims.Username})
-// 	if err != nil {
-// 		http.Error(w, "Failed to fetch activities", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	defer cursor.Close(context.TODO())
-
-// 	var activities []Activity
-// 	if err := cursor.All(context.TODO(), &activities); err != nil {
-// 		http.Error(w, "Failed to decode activities", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	log.Println(activities)
-// 	json.NewEncoder(w).Encode(activities)
-// }

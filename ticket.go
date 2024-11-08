@@ -127,54 +127,49 @@ func deleteTick(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// w.WriteHeader(http.StatusNoContent)
+	// Respond with success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Ticket deleted successfully",
+	})
 }
 
-// Buy Ticket - Reduce quantity of tickets available
+// Buy Ticket
 func buyTicket(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	eventID := ps.ByName("eventid")
-	tickID := ps.ByName("ticketid")
+	ticketID := ps.ByName("ticketid")
 
-	// Get quantity of tickets being purchased
-	quantityToBuyStr := r.FormValue("quantity")
-	quantityToBuy, err := strconv.Atoi(quantityToBuyStr)
-	if err != nil || quantityToBuy <= 0 {
-		http.Error(w, "Invalid quantity value", http.StatusBadRequest)
-		return
-	}
-
-	// Retrieve the ticket from the database
+	// Find the ticket in the database
 	collection := client.Database("eventdb").Collection("ticks")
-	var tick Ticket
-	err = collection.FindOne(context.TODO(), bson.M{"eventid": eventID, "ticketid": tickID}).Decode(&tick)
+	var ticket Ticket // Define the Ticket struct based on your schema
+	err := collection.FindOne(context.TODO(), bson.M{"eventid": eventID, "ticketid": ticketID}).Decode(&ticket)
 	if err != nil {
-		http.Error(w, "Ticket not found", http.StatusNotFound)
+		http.Error(w, "Ticket not found or other error", http.StatusNotFound)
 		return
 	}
 
-	// Check if there is enough stock available
-	if tick.Quantity < quantityToBuy {
-		http.Error(w, "Not enough tickets available", http.StatusBadRequest)
+	// Check if there are tickets available
+	if ticket.Quantity <= 0 {
+		http.Error(w, "No tickets available for purchase", http.StatusBadRequest)
 		return
 	}
 
-	// Update the ticket quantity after purchase
-	newQuantity := tick.Quantity - quantityToBuy
-	_, err = collection.UpdateOne(
-		context.TODO(),
-		bson.M{"eventid": eventID, "ticketid": tickID},
-		bson.M{"$set": bson.M{"quantity": newQuantity}},
-	)
+	// Decrease the ticket quantity
+	update := bson.M{"$inc": bson.M{"quantity": -1}}
+	_, err = collection.UpdateOne(context.TODO(), bson.M{"eventid": eventID, "ticketid": ticketID}, update)
 	if err != nil {
-		http.Error(w, "Error updating ticket quantity", http.StatusInternalServerError)
+		http.Error(w, "Failed to update ticket quantity", http.StatusInternalServerError)
 		return
 	}
 
-	// Optionally, record the purchase (e.g., add to a user’s "purchases" list)
-	// This can be implemented if you want to keep track of who purchased tickets
-
-	// Respond with updated ticket info
-	tick.Quantity = newQuantity
+	// Respond with success
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tick)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Ticket purchased successfully",
+	})
 }

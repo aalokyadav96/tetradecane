@@ -21,19 +21,20 @@ func addMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	// Retrieve form values
-	// Retrieve additional form values (if any)
-	// mediaType := r.FormValue("type")
-	// caption := r.FormValue("caption")
-	// description := r.FormValue("description")
-
+	// Retrieve the ID of the requesting user from the context
+	requestingUserID, ok := r.Context().Value(userIDKey).(string)
+	if !ok {
+		http.Error(w, "Invalid user", http.StatusBadRequest)
+		return
+	}
 	// var media Media
 	// Create a new Media instance
 	media := Media{
-		ID:      generateID(16),
-		EventID: eventID,
-		Type:    "image", // Use type from form or set default
-		Caption: "Needs better forms",
+		ID:        generateID(16),
+		EventID:   eventID,
+		Type:      "image", // Use type from form or set default
+		Caption:   "Needs better forms",
+		CreatorID: requestingUserID,
 		// Description: description,
 	}
 
@@ -74,47 +75,6 @@ func addMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(media)
 }
-
-// // getMedia retrieves a specific media file
-// func getMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-// 	eventID := ps.ByName("eventid")
-// 	mediaID := ps.ByName("id")
-
-// 	collection := client.Database("eventdb").Collection("media")
-// 	var media Media
-// 	err := collection.FindOne(context.TODO(), bson.M{"eventid": eventID, "id": mediaID}).Decode(&media)
-// 	if err != nil {
-// 		http.Error(w, "Media not found", http.StatusNotFound)
-// 		return
-// 	}
-
-// 	// Serve the media file
-// 	http.ServeFile(w, r, media.URL)
-// }
-
-// func getMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//     eventID := ps.ByName("eventid")
-//     mediaID := ps.ByName("id")
-
-//     // Debugging logs
-//     fmt.Println("EventID:", eventID, "MediaID:", mediaID)
-
-//     // Find the media document in the database
-//     collection := client.Database("eventdb").Collection("media")
-//     var media Media
-//     err := collection.FindOne(context.TODO(), bson.M{"eventid": eventID, "id": mediaID}).Decode(&media)
-//     if err != nil {
-//         http.Error(w, "Media not found", http.StatusNotFound)
-//         return
-//     }
-
-//     // Ensure the file URL is correct relative to your server's file path
-//     filePath := "./uploads/" + media.URL
-//     fmt.Println("Serving file:", filePath)
-
-//     // Serve the file
-//     http.ServeFile(w, r, filePath)
-// }
 
 // getMedia retrieves a specific media file for a given event and media ID
 func getMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
